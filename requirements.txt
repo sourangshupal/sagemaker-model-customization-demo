@@ -1,0 +1,7 @@
+sagemaker>=3.16
+boto3
+datasets==5.0.0
+pandas>=2.2
+scikit-learn
+pyarrow>=15.0
+tqdm==4.66.5
