@@ -15,6 +15,12 @@ notebooks and restructured for a one-command demo flow.
 
 ## What it demonstrates
 
+> 🎓 **Teaching with this repo:** new to SageMaker? Start with
+> [`notebooks/SageMaker_AI_Model_Customization_Beginner.ipynb`](notebooks/SageMaker_AI_Model_Customization_Beginner.ipynb) —
+> a progressive, cell-by-cell lab (46 cells) with detailed Markdown explanations, safety
+> checks before any spend, and every common error documented. The scripts below are the
+> same flow condensed for demo/filming use.
+
 | Step | Script | What happens | Measured duration* |
 |------|--------|--------------|--------------------|
 | 1 | `01_data_prep_sft.py` | ContractNLI (607 real NDAs) → prompt/completion JSONL → S3 → SageMaker AI Registry | ~5 min |
