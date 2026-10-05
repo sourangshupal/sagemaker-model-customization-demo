@@ -63,8 +63,16 @@ flowchart LR
 | 2️⃣ | [`scripts/02_train_sft.py`](scripts/02_train_sft.py) | Serverless LoRA SFT of Qwen3-4B (`SFTTrainer`) | ~29 min |
 | 3️⃣ | [`scripts/03_evaluate_sft.py`](scripts/03_evaluate_sft.py) | Custom scorer pipeline scores **base vs fine-tuned** on 123 held-out contracts | 15–20 min |
 | 4️⃣ | [`scripts/04_deploy_sft.py`](scripts/04_deploy_sft.py) | Merged checkpoint → vLLM endpoint on `ml.g5.xlarge` → smoke test → teardown (`deploy`/`test`/`teardown`/`all`) | ~16 min |
+| 4️⃣🅱️ | [`scripts/04b_deploy_base.py`](scripts/04b_deploy_base.py) | Deploy the **base** Qwen3-4B from the JumpStart artifact cache (for A/B) | ~10 min |
+| 4️⃣🆎 | [`scripts/04c_ab_compare.py`](scripts/04c_ab_compare.py) | **Quota-free evaluation:** scores base vs fine-tuned locally on N contracts with the workshop's scorer | ~5 min |
+| 4️⃣🇩 | [`scripts/04d_deploy_dpo.py`](scripts/04d_deploy_dpo.py) | Deploy the DPO-tuned Llama 3.2 1B → tone test → teardown | ~10 min |
 | 5️⃣ | [`scripts/05_train_dpo.py`](scripts/05_train_dpo.py) | Human-Like DPO dataset → serverless DPO of Llama 3.2 1B (`DPOTrainer`) | ~20 min |
-| 6️⃣ | [`scripts/06_evaluate_dpo.py`](scripts/06_evaluate_dpo.py) | LLM-as-judge with built-in + custom rubric metrics | 30–45 min |
+| 6️⃣ | [`scripts/06_evaluate_dpo.py`](scripts/06_evaluate_dpo.py) | LLM-as-judge with built-in + custom rubric metrics *(needs eval quota + MLflow server)* | 30–45 min |
+
+> 💡 **No evaluation quota?** Steps 3 and 6 need the managed-evaluation quota (`L-619D690E`,
+> which defaults to **0** in new accounts) plus an MLflow tracking server. Step 4️⃣🆎 gives you
+> the same base-vs-tuned comparison with zero quota — it runs the workshop's scorer logic
+> locally. Verified live: base 58.8% / 0.505 evF1 → fine-tuned 67.1% / 0.558 on 10 contracts.
 
 \* *Wall-clock measured in a real run (`us-east-1`). Training/eval times vary with service load.*
 
