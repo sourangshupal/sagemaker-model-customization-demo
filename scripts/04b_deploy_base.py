@@ -1,31 +1,34 @@
-"""Step 4 — Lab 1 deployment: serve the merged checkpoint, smoke test, teardown.
+"""Step 4b — deploy the BASE Qwen3-4B model for the side-by-side A/B comparison.
+
+The fine-tuned script (04) deploys the merged LoRA checkpoint. This script deploys
+the untouched base model from the JumpStart artifact cache so both can be invoked
+on the same contract during filming.
 
 Usage:
-    python 04_deploy_sft.py deploy    # create model / endpoint config / endpoint / IC
-    python 04_deploy_sft.py test      # invoke with one real contract, print verdicts
-    python 04_deploy_sft.py teardown  # delete IC, endpoint, config, model
-    python 04_deploy_sft.py all       # deploy -> test -> teardown (demo mode)
+    python 04b_deploy_base.py deploy    # create model / endpoint config / endpoint / IC
+    python 04b_deploy_base.py test      # invoke with one real contract, print verdicts
+    python 04b_deploy_base.py teardown  # delete IC, endpoint, config, model
+    python 04b_deploy_base.py all       # deploy -> test -> teardown (demo mode)
 
 The endpoint uses an ml.g5.xlarge (~$1/hour). ALWAYS finish with teardown.
+NOTE: only run this AFTER the SFT training job has finished — the customization
+quota defaults to 1, and training jobs take priority for this demo flow.
 """
 import hashlib
 import json
-import pathlib
 import re
 import sys
 import time
 
 MODE = sys.argv[1] if len(sys.argv) > 1 else "all"
 
-SCRIPT_DIR = pathlib.Path(__file__).parent
+SCRIPT_DIR = __import__("pathlib").Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import boto3
 from botocore.config import Config
-from sagemaker.core import s3
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.resources import (Endpoint, EndpointConfig, InferenceComponent,
-                                      Model, ModelPackage)
+from sagemaker.core.resources import Endpoint, EndpointConfig, InferenceComponent, Model
 from sagemaker.core.shapes import (ContainerDefinition, InferenceComponentComputeResourceRequirements,
                                    InferenceComponentRuntimeConfig, InferenceComponentSpecification,
                                    ModelDataSource, ProductionVariant, S3ModelDataSource)
@@ -38,15 +41,12 @@ sess = Session()
 region = sess.boto_region_name
 sm_client = boto3.client("sagemaker", region_name=region)
 
-MAX_MPG_NAME_LENGTH = 63
-suffix = "-contractnli-sft-mpg"
-candidate = f"{BASE_MODEL_ID}{suffix}"
-if len(candidate) > MAX_MPG_NAME_LENGTH:
-    digest = hashlib.sha1(BASE_MODEL_ID.encode()).hexdigest()[:6]
-    keep = MAX_MPG_NAME_LENGTH - len(suffix) - len(digest) - 1
-    model_package_group_name = f"{BASE_MODEL_ID[:keep].rstrip('-')}-{digest}{suffix}"
-else:
-    model_package_group_name = candidate
+# Base inference artifact in the JumpStart cache (public bucket, us-east-1).
+BASE_ARTIFACT_URI = (
+    "s3://jumpstart-cache-prod-us-east-1/"
+    "huggingface-reasoning/huggingface-reasoning-qwen3-4b/"
+    "artifacts/inference/v1.0.0/"
+)
 
 MAX_NAME = 63
 
@@ -61,21 +61,12 @@ def rname(base, sfx):
 
 
 stem = f"{BASE_MODEL_ID}-contractnli"
-model_name = rname(stem, "-sft-m")
-endpoint_config_name = rname(stem, "-sft-cfg")
-endpoint_name = rname(stem, "-sft-ep")
-ic_name = rname(stem, "-sft-ic")
+model_name = rname(stem, "-base-m")
+endpoint_config_name = rname(stem, "-base-cfg")
+endpoint_name = rname(stem, "-base-ep")
+ic_name = rname(stem, "-base-ic")
 
 if MODE in ("all", "deploy"):
-    resp = sm_client.list_model_packages(ModelPackageGroupName=model_package_group_name,
-                                         SortBy="CreationTime", SortOrder="Descending", MaxResults=1)
-    assert resp["ModelPackageSummaryList"], "no model packages found - run 02_train_sft.py first"
-    model_package = ModelPackage.get(resp["ModelPackageSummaryList"][0]["ModelPackageArn"])
-    merged_model_s3_uri = s3.s3_path_join(
-        model_package.inference_specification.containers[0]
-        .model_data_source.s3_data_source.s3_uri, "checkpoints", "hf_merged") + "/"
-    print(f"merged model: {merged_model_s3_uri}")
-
     CONTAINER_VERSION = "0.36.0-lmi18.0.0-cu128"
     inference_image = f"763104351884.dkr.ecr.{region}.amazonaws.com/djl-inference:{CONTAINER_VERSION}"
     instance_type = "ml.g5.xlarge"
@@ -102,7 +93,7 @@ if MODE in ("all", "deploy"):
                          image=inference_image,
                          model_data_source=ModelDataSource(
                              s3_data_source=S3ModelDataSource(
-                                 s3_uri=merged_model_s3_uri, s3_data_type="S3Prefix",
+                                 s3_uri=BASE_ARTIFACT_URI, s3_data_type="S3Prefix",
                                  compression_type="None")),
                          environment=env),
                      execution_role_arn=config.ROLE_ARN)
@@ -183,6 +174,9 @@ if MODE in ("all", "test"):
     if pred:
         print(f"answered {len(pred)} of {len(labels)} checklist items")
         print(json.dumps(dict(list(pred.items())[:3]), indent=1))
+    else:
+        print("--- raw output (first 1200 chars) ---")
+        print((text or "")[:1200])
 
 if MODE in ("all", "teardown"):
     time.sleep(45)

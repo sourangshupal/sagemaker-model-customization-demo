@@ -3,6 +3,7 @@
 Copy .env.example to .env and fill in your values, or export the variables
 before running the scripts. See README.md for how to find each value.
 """
+import importlib.util
 import os
 import sys
 
@@ -37,3 +38,19 @@ LAB2_DIR = os.path.join(
     WORKSHOP_DIR,
     "workshops/serverless-model-customization-with-sagemaker-ai/lab-2-direct-preference-optimization-DPO",
 )
+
+
+def workshop_config(lab_dir):
+    """Load a workshop lab's config.py by file path.
+
+    A plain ``from config import ...`` after ``import config`` would resolve to
+    THIS module (already in sys.modules), not the workshop file — so load the
+    workshop config explicitly with importlib.
+    """
+    spec = importlib.util.spec_from_file_location(
+        f"workshop_config_{lab_dir.rstrip('/').rsplit('/', 1)[-1]}",
+        os.path.join(lab_dir, "config.py"),
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module

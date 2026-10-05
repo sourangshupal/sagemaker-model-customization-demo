@@ -23,8 +23,7 @@ from sagemaker.train.evaluate import CustomScorerEvaluator
 
 import config
 
-sys.path.insert(0, config.LAB1_DIR)
-from config import BASE_MODEL_ID  # noqa: E402
+BASE_MODEL_ID = config.workshop_config(config.LAB1_DIR).BASE_MODEL_ID
 
 assert config.MLFLOW_TRACKING_SERVER_ARN, "Set MLFLOW_TRACKING_SERVER_ARN (see README)"
 

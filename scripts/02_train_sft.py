@@ -20,8 +20,7 @@ from sagemaker.train.sft_trainer import SFTTrainer
 
 import config
 
-sys.path.insert(0, config.LAB1_DIR)
-from config import BASE_MODEL_ID  # workshop's lab config: huggingface-reasoning-qwen3-4b  # noqa: E402
+BASE_MODEL_ID = config.workshop_config(config.LAB1_DIR).BASE_MODEL_ID  # workshop's lab config: huggingface-reasoning-qwen3-4b
 
 DATASET_PREFIX = "contractnli-nda-review"
 
